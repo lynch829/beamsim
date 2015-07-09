@@ -1,0 +1,4 @@
+
+#basic file types to ignore
+*.h5
+*.pyc
