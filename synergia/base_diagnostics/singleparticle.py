@@ -118,23 +118,27 @@ def plot_P(PArray, opts, num=10, ID=0):
     v = reshaped[1]
     
     
-    fig = plt.figure(figsize=(8,6))
+    if opts.scale:
+        fig = plt.figure(figsize=(opts.scale*8,opts.scale*6))
+    else:
+        fig = plt.figure(figsize=(8,6))
+        
     plt.subplot(1,1,1)
     ax = plt.gca()
     
     #print ymin, ymax
     
-    ax.scatter(h,v, c ='b', s=6)
+    ax.scatter(h,v, c ='b', s=2)
     ax.set_aspect('equal') #want equal aspect ratios for Poincare plots
     
     #ax.set_ylim([ymin,ymax])
     #plt.plot(h,v, 'o')
-    plt.xlabel(opts.hcoord,fontsize=12)
-    plt.ylabel(opts.vcoord,fontsize=12)
+    plt.xlabel(opts.hcoord,fontsize=round(12*opts.scale))
+    plt.ylabel(opts.vcoord,fontsize=round(12*opts.scale))
     title = opts.hcoord + '-'+ opts.vcoord+' for ' + str(turns) + ' turns'
     if not opts.lattice_name== None:
         title = title + ' for lattice ' + opts.lattice_name
-    plt.title(title, y=1.05, fontsize=14)
+    plt.title(title, y=1+0.05/opts.scale, fontsize=round(14*opts.scale))
     #plt.draw()
     #fig.tight_layout()
     plt.show()
