@@ -64,6 +64,7 @@ def getCoordVals(filename, plots):
     return [xVals,yVals]
 
 
+
 def plotP(xC,yC, start, end, names, steps, lname,save):
     '''Make a poincare plot for tracked particles'''
     
@@ -74,7 +75,7 @@ def plotP(xC,yC, start, end, names, steps, lname,save):
     st = start*interval
     et = end*interval-1
 
-    print str(et-st) + "total steps plotted"
+    #print str(et-st) + " total steps plotted"
 
     xName = names[0]
     yName = names[1]

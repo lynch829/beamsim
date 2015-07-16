@@ -28,6 +28,7 @@ class Options:
         self.variance = None
         self.relpath = None
         self.lattice_simulator = None
+        self.num = None #number of turns to plot
         
     def set_new(self,name,val):
         '''A class method which wraps setattr()'''

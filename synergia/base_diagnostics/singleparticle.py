@@ -82,6 +82,67 @@ def plot_SPH(hamArray,opts, ID=0):
         sv_title = 'SPH_0_'+ opts.lattice_name + '.pdf'
         fig.savefig(sv_title, bbox_inches='tight')
 
+
+def plot_P(PArray, opts, num=10, ID=0):
+    
+    '''Create a Poincare plot for specified particle IDs over pre-specified turn #s
+    
+    
+    Note: Currently, opts.plots must be a list of coordinates of length 2!
+    
+    '''
+
+    #general plot settings
+    matplotlib.rcParams['figure.autolayout'] = True
+    
+    if opts.num:
+        num = opts.num
+    
+    #plot up to 10 particle tracks
+    if PArray.shape[1] < num:
+        num = PArray.shape[1]
+
+    #plot specified # of turns
+    if opts.turns:
+        turns = opts.turns
+    else: turns = PArray.shape[0]        
+    
+    plots = {'x':0, 'px':1, 'y':2, 'py':3}
+    
+    cropped = PArray[:turns,:num,(plots[opts.plots[0]],plots[opts.plots[1]])]
+    
+    reshaped = cropped.reshape(cropped.size/2,2).T
+    
+    #separate horizontal and vertical components
+    h = reshaped[0]
+    v = reshaped[1]
+    
+    
+    fig = plt.figure(figsize=(8,6))
+    plt.subplot(1,1,1)
+    ax = plt.gca()
+    
+    #print ymin, ymax
+    
+    ax.scatter(h,v, c ='b', s=6)
+    ax.set_aspect('equal') #want equal aspect ratios for Poincare plots
+    
+    #ax.set_ylim([ymin,ymax])
+    #plt.plot(h,v, 'o')
+    plt.xlabel(opts.hcoord,fontsize=12)
+    plt.ylabel(opts.vcoord,fontsize=12)
+    title = opts.hcoord + '-'+ opts.vcoord+' for ' + str(turns) + ' turns'
+    if not opts.lattice_name== None:
+        title = title + ' for lattice ' + opts.lattice_name
+    plt.title(title, y=1.05, fontsize=14)
+    #plt.draw()
+    #fig.tight_layout()
+    plt.show()
+    
+    if opts.save:
+        sv_title = 'Poincare'+'_' + opts.hcoord+'_' + opts.vcoord+'_'+ str(turns) + '_turns_'+  opts.lattice_name + '.pdf'
+        fig.savefig(sv_title, bbox_inches='tight')     
+        
  
 def plot_J(JArray,opts, ID=0):
     
@@ -121,7 +182,7 @@ def plot_J(JArray,opts, ID=0):
             ymax = 1.05*vScale.max()
             ymin = 0.95*vScale.min()            
     
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,6))
     plt.subplot(1,1,1)
     ax = plt.gca()
     
@@ -316,6 +377,91 @@ def get_twiss(lattice_simulator):
     return np.asarray(twiss)
     
 
+def normalized_coordinates(header, particles, twiss, units=None, ID=None):
+    '''Return the an array of particles (fixed s) in normalized transverse coordinates rather than trace space
+    
+    Input Coordinates - x, x', y, y'
+    Output Coordinates - x, beta*x' + alpha*x, y, beta*y + alpha*y
+    
+    '''
+    
+    sval = header['s_val']
+    svals = twiss[::,0]
+    betaxvals = twiss[::,1]
+    alphaxvals = twiss[::,2]
+    gammaxvals = twiss[::,3]
+    betayvals = twiss[::,4]
+    alphayvals = twiss[::,5]
+    gammayvals = twiss[::,6]
+    
+    #interpolate if needed
+    if not sval in svals:
+        betax = np.interp(sval, svals, betaxvals)
+        betay = np.interp(sval, svals, betayvals)
+        alphax = np.interp(sval, svals, alphaxvals)
+        alphay = np.interp(sval, svals, alphayvals)
+        gammax = np.interp(sval, svals, gammaxvals)
+        gammay = np.interp(sval, svals, gammayvals)
+    else:
+        ind = list(svals).index(sval)
+        betax = twiss[ind,1]
+        alphax = twiss[ind,2]
+        gammax = twiss[ind,3]
+        betay = twiss[ind,4]
+        alphay = twiss[ind,5]
+        gammay = twiss[ind,6]
+    
+    
+    x = particles[:,coords['x']] #units m
+    newx = x / math.sqrt(betax) #normalized
+    
+    xp = particles[:,coords['xp']] #unitless
+    px = (betax*xp + alphax*x)/math.sqrt(betax) #normalized
+    
+    y = particles[:,coords['y']] #units m
+    newy = y / math.sqrt(betay) #normalized
+    
+    yp = particles[:,coords['yp']] #unitless
+    py = (betay*yp + alphay*y) /math.sqrt(betay) #normalized    
+    
+    #stack arrays then transpose to get array of coordinate vectors
+    particles_norm = np.vstack((newx,px,newy,py)).T
+    
+    return particles_norm
+
+def get_normalized_coords(filelist, twiss, num=None, ID=None):
+    
+    '''
+    
+    Returns a numpy array of normalized coordinate vectors obtained from .h5 files in filelist
+    
+    Arguments:
+    filelist - A list of .h5 files containing particle array information
+    twiss - array of twiss parameters for the lattice
+    
+    
+    Returns a numpy array with dimensions #turns x #particles x #transverse coordinates(4).
+    norms[B][A] returns vector of coordinates for particle A at turn B.
+    '''
+
+    #opts = options.Options()
+    #opts.hcoord = 'x'
+    #opts.vcoord = 'xp'
+    #opts.lattice_name = 'FODO'
+    norms = [] #norms is a list of arrays of particle coordinates
+    
+    for index,fileName in enumerate(filelist):
+        inputfile = fileName
+        header, particles = get_particles(inputfile)
+        norm_coords = normalized_coordinates(header, particles, twiss)
+        #only append first num of tracked particles if not plotting all
+        if num:
+            norms.append(norm_coords[:num])
+        else:  
+            norms.append(norm_coords)
+    return np.asarray(norms)
+
+
 def single_particle_invariant(header, particles, twiss, units=None, ID=None):
     
     '''
@@ -494,6 +640,19 @@ def get_tracks(filelist, opts):
 
 
 ################################################################################################
+
+
+def plot_Poincare(opts):
+    
+    '''Plot a poincare section in the desired normalized coordinates'''
+    
+    opts.hcoord = opts.plots[0]
+    opts.vcoord = opts.plots[1]
+    
+    files = get_file_list(opts)
+    twiss = get_twiss(opts.lattice_simulator)
+    pArray = get_normalized_coords(files,twiss)
+    plot_P(pArray, opts) 
 
 
 def plot_Invariant(opts):
