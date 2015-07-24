@@ -135,7 +135,7 @@ def plot_P(PArray, opts, num=10, ID=0):
     #plt.plot(h,v, 'o')
     plt.xlabel(opts.hcoord,fontsize=round(12*opts.scale))
     plt.ylabel(opts.vcoord,fontsize=round(12*opts.scale))
-    title = opts.hcoord + '-'+ opts.vcoord+' for ' + str(turns) + ' turns'
+    title = opts.hcoord + '-'+ opts.vcoord + ' for ' + str(turns) + ' turns'
     if not opts.lattice_name== None:
         title = title + ' for lattice ' + opts.lattice_name
     plt.title(title, y=1+0.05/opts.scale, fontsize=round(14*opts.scale))
@@ -293,12 +293,25 @@ def plot_tracks(tracks, opts, ID=0):
 
 ################################## GETTERS ####################################
 
-def get_particles(inputfile):
+def get_particles(inputfile, lost=None):
     
-    '''Reads an input file and returns a numpy array of particles and a dictionary of root values'''
+    '''Reads an input file and returns a numpy array of particles and a dictionary of root values. 
+    If lost particles specified, then returns those separately.
+    
+    '''
     
     f = tables.openFile(inputfile, 'r')
     particles = f.root.particles.read()
+    
+    #As a test, arbitrarily remove some particles - working as intended
+    #particles = np.delete(particles,10,0)
+    #lost.append(10)
+    #particles = np.delete(particles,20,0)
+    #lost.append(21)
+    
+    #define lost particles array
+    #lost_particles = np.zeros((len(lost),7))
+    #lost_particles[:,6] = lost
     
     #get appropriate reference properties from file root
     npart = particles.shape[0]
@@ -316,7 +329,34 @@ def get_particles(inputfile):
     header['s_val'] = sn
     header['t_len'] = tn
     
-    return header,particles
+    if lost:
+    
+        #define new lists
+        lost_particles = []
+        kept_particles = []
+        lost_counter = list(lost)
+    
+        #separate lost particles
+        for index,particle in enumerate(particles):
+            if particle[6] in lost:
+                lost_particles.append(particle)
+                #remove from counter
+                lost_counter.remove(particle[6])
+            else:
+                kept_particles.append(particle)
+            
+        #now we just need to make sure we fill out the kept_particles array to make it the proper length.
+        if not len(lost_particles) == len(lost):
+            for num in lost_counter:
+                #placeholder = [-1,-1,-1,-1,-1,-1,num]
+                placeholder = [0, 0, 0, 0, 0, 0, num]
+                lost_particles.append(placeholder)
+    
+        return header, np.asarray(kept_particles), np.asarray(lost_particles)
+    
+    else:
+        
+        return header, particles
     
 
 def get_file_list(opts):
@@ -348,6 +388,32 @@ def get_file_list(opts):
                 pfiles.append(filename)
     
     return pfiles
+    
+    
+def get_lost_particle_list(opts):
+    '''Returns a list of particle IDs corresponding to lost particles from inspection of the output files'''
+    files = get_file_list(opts)
+    
+    #compare first file output to final file output
+    header1, particles1 = get_particles(files[0])
+    
+    header2, particles2 = get_particles(files[-1])
+    
+    lost = []
+    
+    #first check if size is equal
+    if not (header1['n_part'] == header2['n_part']):
+        #make a boolean comparison
+        boolVals = (particles1[0:header2['n_part'],6] == particles2[:,6])
+        #non-equal values refer to lost particles - return index of 'False' to get lost particle
+        lost = list(boolVals).index(False)
+    
+    #if only one particle is lost, then we have an int and not a list, so we want to cast as a list
+    if type(lost) == int:
+        return [lost]
+    else: 
+        return lost
+    
     
 def get_twiss(lattice_simulator):
     '''
@@ -433,7 +499,7 @@ def normalized_coordinates(header, particles, twiss, units=None, ID=None):
     
     return particles_norm
 
-def get_normalized_coords(filelist, twiss, num=None, ID=None):
+def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, ID=None):
     
     '''
     
@@ -456,13 +522,20 @@ def get_normalized_coords(filelist, twiss, num=None, ID=None):
     
     for index,fileName in enumerate(filelist):
         inputfile = fileName
-        header, particles = get_particles(inputfile)
-        norm_coords = normalized_coordinates(header, particles, twiss)
+        header, particles, lost_particles = get_particles(inputfile, lost)
+        
+        if plotlost:
+            norm_coords = normalized_coordinates(header,lost_particles,twiss)
+        else:
+            norm_coords = normalized_coordinates(header, particles, twiss)
+        
         #only append first num of tracked particles if not plotting all
         if num:
             norms.append(norm_coords[:num])
         else:  
             norms.append(norm_coords)
+        #append 0s to maintain array size
+        #if not header['n_part'] == norm_coords.shape[0]
     return np.asarray(norms)
 
 
@@ -643,7 +716,7 @@ def get_tracks(filelist, opts):
     return np.asarray(tracks)    
 
 
-################################################################################################
+#######################################################################################################################################
 
 
 def plot_Poincare(opts):
@@ -654,8 +727,16 @@ def plot_Poincare(opts):
     opts.vcoord = opts.plots[1]
     
     files = get_file_list(opts)
+    lost = get_lost_particle_list(opts)
     twiss = get_twiss(opts.lattice_simulator)
-    pArray = get_normalized_coords(files,twiss)
+    
+    
+    if opts.plot_lost:
+         pArray = get_normalized_coords(files,twiss,lost,True)
+        
+    else:
+        pArray = get_normalized_coords(files,twiss,lost)
+    
     plot_P(pArray, opts) 
 
 
