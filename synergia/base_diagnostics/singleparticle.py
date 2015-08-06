@@ -117,6 +117,8 @@ def plot_P(PArray, opts, num=10, ID=0):
     h = reshaped[0]
     v = reshaped[1]
     
+    #ymax = max(abs([h,v]))
+    
     
     if opts.scale:
         fig = plt.figure(figsize=(opts.scale*8,opts.scale*6))
@@ -170,7 +172,7 @@ def plot_J(JArray,opts, ID=0):
         ID = opts.ID
    
     h = np.arange(opts.turns+1) #plus 1 to account for initial conditions
-    v = JArray[:,ID]
+    v = JArray[:opts.turns+1,ID]
     vinit = v[0] #take the iniital values as the normalization value
     
     if opts.norm:
@@ -178,10 +180,10 @@ def plot_J(JArray,opts, ID=0):
         ymin = 0
         ymax = 2
     else:
-        vScale = v
+        vScale = v*1.e6 #convert to mm-mrad
         if opts.variance:
-            ymax = (1+opts.variance)*vScale.max()
-            ymin = (1-opts.variance)*vScale.min()
+            ymax = (1+opts.variance)*vScale.mean()
+            ymin = (1-opts.variance)*vScale.mean()
         else:
             ymax = 1.05*vScale.max()
             ymin = 0.95*vScale.min()            
@@ -198,17 +200,31 @@ def plot_J(JArray,opts, ID=0):
     ax.set_ylim([ymin,ymax])
     #plt.plot(h,v, 'o')
     plt.xlabel(opts.hcoord,fontsize=12)
-    plt.ylabel(opts.vcoord,fontsize=12)
-    title = 'Courant synder invariant for particle ' + str(ID)
+    plt.ylabel(opts.vcoord + " [mm-mrad]",fontsize=12)
+    
+    
+    #title stuff
+    if opts.num == 2:
+        title = 'Second Invariant for particle ' + str(ID)
+        sv_title = 'I_'+str(ID)+'_'+ opts.lattice_name + '.pdf'
+    else:
+        title = 'First invariant for particle ' + str(ID)
+        sv_title = 'H_'+str(ID)+'_'+ opts.lattice_name + '.pdf'
+        
+    if not opts.elliptic:
+        title = 'Courant synder invariant for particle ' + str(ID)
+        sv_title = 'J_'+str(ID)+'_'+ opts.lattice_name + '.pdf'
+        
     if not opts.lattice_name== None:
         title = title + ' for lattice ' + opts.lattice_name
+        
     plt.title(title, y=1.05, fontsize=14)
     #plt.draw()
     #fig.tight_layout()
     plt.show()
     
     if opts.save:
-        sv_title = 'J_'+str(ID)+'_'+ opts.lattice_name + '.pdf'
+        #sv_title = 'J_'+str(ID)+'_'+ opts.lattice_name + '.pdf'
         fig.savefig(sv_title, bbox_inches='tight') 
  
     
@@ -329,6 +345,9 @@ def get_particles(inputfile, lost=None):
     header['s_val'] = sn
     header['t_len'] = tn
     
+    #need to potentially adjust the counter!
+    #adjustment = particles[npart-1, 6] - (npart-1)
+    
     if lost:
     
         #define new lists
@@ -338,23 +357,26 @@ def get_particles(inputfile, lost=None):
     
         #separate lost particles
         for index,particle in enumerate(particles):
-            if particle[6] in lost:
+            #val = particle[6]-adjustment
+            val = particle[6]
+            if val in lost:
                 lost_particles.append(particle)
                 #remove from counter
-                lost_counter.remove(particle[6])
+                #lost_counter.remove(val)
             else:
                 kept_particles.append(particle)
             
         #now we just need to make sure we fill out the kept_particles array to make it the proper length.
-        if not len(lost_particles) == len(lost):
-            for num in lost_counter:
-                #placeholder = [-1,-1,-1,-1,-1,-1,num]
-                placeholder = [0, 0, 0, 0, 0, 0, num]
-                lost_particles.append(placeholder)
+        #if not len(lost_particles) == len(lost):
+        #    for num in lost_counter:
+        #        #placeholder = [-1,-1,-1,-1,-1,-1,num]
+        #        placeholder = [0, 0, 0, 0, 0, 0, num]
+        #        lost_particles.append(placeholder)
     
         return header, np.asarray(kept_particles), np.asarray(lost_particles)
     
     else:
+        #lost_particles = []
         
         return header, particles
     
@@ -405,8 +427,23 @@ def get_lost_particle_list(opts):
     if not (header1['n_part'] == header2['n_part']):
         #make a boolean comparison
         boolVals = (particles1[0:header2['n_part'],6] == particles2[:,6])
-        #non-equal values refer to lost particles - return index of 'False' to get lost particle
-        lost = list(boolVals).index(False)
+        
+        #construct list of lost particles
+        boolList = list(boolVals)
+        start = 0;
+        stop = len(boolList);
+        offset = 0; #offset must increment for each lost particle as list index dephases with particle index
+
+        while start < stop:
+            try:
+                idx = boolList.index(False) +offset #include offset
+                lost.append(int(particles1[idx,6])) #append particle ID, could be different from array index
+                boolList.remove(False)
+                start = idx
+                offset +=1
+                #print str(start) + 'is start and ' + str(stop) + 'is stop'
+            except ValueError:
+                start = stop
     
     #if only one particle is lost, then we have an int and not a list, so we want to cast as a list
     if type(lost) == int:
@@ -451,7 +488,10 @@ def normalized_coordinates(header, particles, twiss, units=None, ID=None):
     '''Return the an array of particles (fixed s) in normalized transverse coordinates rather than trace space
     
     Input Coordinates - x, x', y, y'
-    Output Coordinates - x, beta*x' + alpha*x, y, beta*y + alpha*y
+    Output Coordinates - sqrt(betax)*x, 
+                        (1/sqrt(betax))*(beta*x' + alpha*x), 
+                        sqrt(betay)*y, 
+                        (1/sqrt(betay))*(beta*y + alpha*y)
     
     '''
     
@@ -499,6 +539,42 @@ def normalized_coordinates(header, particles, twiss, units=None, ID=None):
     
     return particles_norm
 
+def elliptic_coordinates(normalized, opts):
+    '''Return the an array of elliptic coordinate values u and v for each 'particle' in the input array
+    
+    Input Coordinates - normal coordinates x, px, y, py
+    Output Coordinates - u, v - vectors of length equal to the # of particles
+    
+    Arguments:
+        - t, c - nonlinear magnet parameters (via opts)
+    
+    '''
+    t = opts.t
+    c = opts.c
+        
+    x = normalized[:,0]
+    #px = normalized[:,1]
+    y = normalized[:,2]
+    #py = normalized[:,3]
+    #first need to adjust x and y by the c factor
+    
+    x = x/c
+    y = y/c
+    
+    #this needs to be adjusted so that I work on the entire array in one swoop
+    
+    u = 0.5*(np.sqrt((x + 1.)**2 + y**2) + np.sqrt((x -1.)**2 + y**2))
+    v = 0.5*(np.sqrt((x + 1.)**2 + y**2) - np.sqrt((x -1.)**2 + y**2))
+    
+    #f2u = u * np.sqrt(u**2 -1.) * np.arccosh(u)
+    #g2v = v * np.sqrt(1. - v**2) * (-np.pi/2 + np.arccos(v))
+    
+    
+    #elliptic = f2u + g2v / (u**2 - v**2)
+    
+    return [u,v]
+    
+
 def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, ID=None):
     
     '''
@@ -522,7 +598,11 @@ def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, 
     
     for index,fileName in enumerate(filelist):
         inputfile = fileName
-        header, particles, lost_particles = get_particles(inputfile, lost)
+        
+        if lost:
+            header, particles, lost_particles = get_particles(inputfile, lost)
+        else:
+            header, particles = get_particles(inputfile)
         
         if plotlost:
             norm_coords = normalized_coordinates(header,lost_particles,twiss)
@@ -538,12 +618,128 @@ def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, 
         #if not header['n_part'] == norm_coords.shape[0]
     return np.asarray(norms)
 
+    
+
+def second_invariant(normalized, u,v, opts):
+
+    '''
+    
+    Returns an array containing the 2nd invariant for IOTA particles with the NL magnet
+    
+    Arguments:
+    normalized - array of particles normalized coordinates
+    u,v - arrays of elliptic coordinates
+    c, t - elliptic potential strength parameters (via opts)
+    
+    '''
+    t = opts.t
+    c = opts.c
+    
+    x = normalized[:,0]
+    px = normalized[:,1]
+    y = normalized[:,2]
+    py = normalized[:,3]
+    
+    
+    p_ang = (x*py - y*px)**2
+    p_lin = (px*c)**2
+    
+    #harmonic part of potential
+    f1u = c**2 * u**2 * (u**2 -1.)
+    g1v = c**2 * v**2 * (1.-v**2)
+    
+    #elliptic part of potential
+    f2u = -t * c**2 * u * np.sqrt(u**2-1.) * np.arccosh(u)
+    g2v = -t * c**2 * v * np.sqrt(1.-v**2) * (0.5*np.pi - np.arccos(v))
+    
+    #combined - Adjusted this from Stephen's code
+    fu = (0.5 * f1u - f2u)
+    gv = (0.5 * g1v + g2v)
+    
+    #This is Stephen's previous statement, not sure if its correct
+    #fu = 0.5 * f1u - f2u
+    #gv = 0.5 * g1v + g2v
+    
+    invariant = (p_ang + p_lin) + 2.*(c**2) * (fu * v**2 + gv * u**2)/(u**2 - v**2)
+    
+    return invariant
+    
+def elliptic_hamiltonian(u,v, opts):
+    
+    '''
+    
+    Returns arrays of values for the first elliptic invariant (Hamiltonian) for a system with NL magnetic potential
+    
+    '''
+    
+    t = -1*opts.t
+    c = opts.c
+    
+    f2u = u * np.sqrt(u**2 -1.) * np.arccosh(u)
+    g2v = v * np.sqrt(1. - v**2) * (-np.pi/2 + np.arccos(v))
+    
+    elliptic = (f2u + g2v) / (u**2 - v**2)
+    kfac = t*c*c
+    
+    return kfac*elliptic
+    
+    
+
+def get_single_particle_elliptic_invariants(filelist, twiss, opts, lost, num=1):
+
+    '''
+    
+    Returns an array of single particle invariants (Hamiltonian with elliptic potential)
+    
+    Arguments:
+    filelist - list of output (.h5) files
+    twiss - an array of twiss functions for the lattice
+    opts - list of options (includes elliptic potential scalings c,t)
+    num - 1 for 1st invariant, 2 for 2nd invariant
+
+    
+    '''
+
+    
+    invariant = [] #invariant is a list of arrays of macroparticles
+    
+    for index,fileName in enumerate(filelist):
+        inputfile = fileName
+        
+        if lost:
+            header, particles, lost_particles = get_particles(inputfile, lost)
+        else:
+            header, particles = get_particles(inputfile, lost)
+        
+        #normalize coordinates    
+        norm_coords = normalized_coordinates(header, particles, twiss)
+        #construct elliptic coordinates for that file
+        u,v = elliptic_coordinates(norm_coords, opts)
+        
+        
+        if num == 1:
+            #calculate the first invariant
+            vals = single_particle_hamiltonian(norm_coords) + elliptic_hamiltonian(u,v,opts)            
+        elif num == 2:
+            #calculate the second invariant
+            vals = second_invariant(norm_coords, u,v, opts)
+        else:
+            #otherwise calculate the first invariant
+            print "Improper invariant number specified. Calculating 1st invariant by default."
+            vals = single_particle_hamiltonian(norm_coords) + elliptic_hamiltonian(u,v,opts)
+        
+        invariant.append(vals)
+        
+        #invariant.append(single_particle_invariant(header, particles, twiss))
+
+    return np.asarray(invariant)
+
 
 def single_particle_invariant(header, particles, twiss, units=None, ID=None):
     
     '''
     
-    Returns an array of single particle invariants (Courant Synder)
+    Returns an array of single particle invariants (Courant Synder / Hamiltonian)
     
     Arguments:
     header - a header dictionary obtained from 'get_particles()'
@@ -596,7 +792,7 @@ def single_particle_invariant(header, particles, twiss, units=None, ID=None):
     
     return inv2
     
-def get_invariants(filelist, twiss):
+def get_invariants(filelist, twiss, lost):
     
     '''
     
@@ -616,41 +812,49 @@ def get_invariants(filelist, twiss):
     
     for index,fileName in enumerate(filelist):
         inputfile = fileName
-        header, particles = get_particles(inputfile)
+        
+        if lost:
+            header, particles, lost_particles = get_particles(inputfile, lost)
+        else:
+            header, particles = get_particles(inputfile, lost)
         invariant.append(single_particle_invariant(header, particles, twiss))
         
     return np.asarray(invariant)
 
 
-def single_particle_hamiltonian(header, particles, units=None, ID=None):
+def single_particle_hamiltonian(normalized, ID=None):
     
     '''
     
-    DEPRECATED: Returns an array of single particle Hamiltonian values for the particles described by 'particles' 
+    UPDATED: Returns the single particle hamiltonian (quadratic component) in absence of nonlinearities 
     
     Arguments:
-    header - a header dictionary obtained from 'get_particles()'
-    particles - an array of particles obtained from .h5 files via f.root.particles.read()
+    normalized - the normalized coordinates for the particles
     
     Optional:
     ID - use to specify values for a single particle - default None
     
     '''
     
-    pref = header['p_ref'] #reference momentum in GeV/c
-    mass = header['mass'] #mass in GeV/c^2
-    gevc = 5.34428576e-19 #mkg/s per GeV/c
+    #pref = header['p_ref'] #reference momentum in GeV/c
+    #mass = header['mass'] #mass in GeV/c^2
+    #gevc = 5.34428576e-19 #mkg/s per GeV/c
     
-    x = particles[:,coords['x']] #units m
-    px = particles[:,coords['xp']] #unitless
+    x = normalized[:,0]
+    px = normalized[:,1]
+    y = normalized[:,2]
+    py = normalized[:,3]
     
-    y = particles[:,coords['y']] #units m
-    py = particles[:,coords['yp']] #unitless 
+    #x = particles[:,coords['x']] #units m
+    #px = particles[:,coords['xp']] #unitless
     
-    if units:
-        print "Units flag specified"
-        px = px*pref*gevc #units kgm/s
-        py = py*pref*gevc #units kgm/s
+    #y = particles[:,coords['y']] #units m
+    #py = particles[:,coords['yp']] #unitless 
+    
+    #if units:
+    #    print "Units flag specified"
+    #    px = px*pref*gevc #units kgm/s
+    #    py = py*pref*gevc #units kgm/s
     
     if ID:
         #quadratic is the basis for calculating the hamiltonian, in absence of nonlinear couplings
@@ -753,17 +957,55 @@ def plot_Invariant(opts):
     
     opts.hcoord = 'turn #'
     opts.vcoord = 'J(p,q)'
+    opts.elliptic = False
     
     files = get_file_list(opts)
     twiss = get_twiss(opts.lattice_simulator)
-    jArray = get_invariants(files, twiss)
+    lost = get_lost_particle_list(opts)
+    jArray = get_invariants(files, twiss, lost)
     #return jArray
     plot_J(jArray,opts)
+    
+def plot_elliptic_Invariant(opts):
+    '''
+    
+    Plots the single particle hamiltonian for NL elliptic potential over a specified # of turns and # of particles
+    
+    Arguments:
+    opts - an Options object specifying # of turns, particle #s, etc.
+    
+    '''
+    
+    opts.hcoord = 'turn #'
+    opts.t = 0.4
+    opts.c = 0.01
+    opts.elliptic = True
+    
+    if opts.num:
+        num = opts.num
+    else:
+        num = 1
+        opts.num = 1
+        
+    if num == 1:
+        opts.vcoord = 'H(p,q)'
+    else:
+        opts.vcoord = 'I(p,q)'
+    
+    files = get_file_list(opts)
+    twiss = get_twiss(opts.lattice_simulator)
+    lost = get_lost_particle_list(opts)
+    jArray = get_single_particle_elliptic_invariants(files, twiss, opts, lost, num)
+    #jArray = get_invariants(files, twiss, lost)
+    #return jArray
+    plot_J(jArray,opts)
+       
 
 
 def plot_Hamiltonian(opts):
     
     '''
+    DEPRECATED
     
     Plots the single particle hamiltonian over a specified # of turns and # of particles
     

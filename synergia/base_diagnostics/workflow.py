@@ -5,12 +5,22 @@ import synergia_workflow
 
 #Add options
 
-def make_opts(name, order, outputdir, steps, steps_per_element):
-    '''A quick function for defining a Synergia options object for map propagator comparisons.'''
+def make_opts(name, order, outputdir, steps, steps_per_element, **kwargs):
+    '''A quick function for defining a Synergia options object for map propagator comparisons.
+    
+    Takes **kwargs input. Currently, the outputdir argument is deprecated.
+    
+    
+    '''
 
     opts = synergia_workflow.Options(name)
     opts.add("map_order", order, "Map order", int)
+    
+    #default output directory
+    outputdir = 'order_'+str(order)+'_'+name
     opts.add("output_dir",outputdir,"Directory for output files", str)
+    
+    
     
     #opts.add("map_order", 1, "Map order", int)
     opts.add("steps", steps, "Number of steps per turn", int)
@@ -25,7 +35,8 @@ def make_opts(name, order, outputdir, steps, steps_per_element):
 
     opts.add("emitx", 2.5e-6, "real sigma Horizontal emittance [m rad]", float)
     opts.add("emity", 2.5e-6, "real sigma Vertical emittance [m rad]", float)
-    opts.add("stdz", 10.0, "sigma read z [m]", float)
+    opts.add("emit_transverse", 7.0e-6, "transverse emittance for elliptical beam [m rad]", float)
+    opts.add("stdz", 0.05, "sigma read z [m]", float) #5 cm bunch length for IOTA
     opts.add("dpop", 0.0, "Delta-p/p spread", float)
 
     opts.add("macro_particles", 100, "Number of macro particles", int)
@@ -34,8 +45,9 @@ def make_opts(name, order, outputdir, steps, steps_per_element):
     opts.add("seed", 349250524, "Pseudorandom number generator seed", int)
 
 
-    #space charge additions
+    opts.add("bunch_file","myBunch.txt","txt file for bunch particles", str)
 
+    #space charge additions
     opts.add("gridx", 64, "grid points in x for solver", int)
     opts.add("gridy", 64, "grid points in y for solver", int)
     opts.add("gridz", 64, "grid points in z for solver", int)
@@ -43,8 +55,20 @@ def make_opts(name, order, outputdir, steps, steps_per_element):
     #options for controlling chef propagation vs. chef mapping!
     opts.add("use_maps", "all", "use maps for propagation either all, none, onlyrf, nonrf")
     #opts.add("allmaps", False, "Use all maps for propagation", bool)
-    #opts.add("stepper", "splitoperator",
-    #         "Simulation stepper, either 'independent','elements','splitoperator','soelements'", str)
+    opts.add("stepper", "splitoperator", "Simulation stepper, either 'independent','elements','splitoperator','soelements'", str)
+    
+    for key,vals in kwargs.items():
+
+    #Quick and dirty overwrite
+        if opts.has_option(key):
+            print "Overwriting option " + key
+            setattr(opts,key, vals[0])
+        else:
+            if len(vals) == 3:
+                opts.add(key, vals[0], vals[1], vals[2])
+            elif len(vals) == 2:
+                opts.add(key, vals[0], vals[1])
+    
     
     return opts
 
@@ -86,3 +110,11 @@ def cleanup(dirname):
                 else:
                     #perhaps trying to move to a new disk or something that os can't handle
                     raise
+                    
+def log_input(opts):
+    '''Write an output file containing necessary simulation parameters for reproduction'''
+    
+    
+    
+    
+    

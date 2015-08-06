@@ -30,6 +30,9 @@ class Options:
         self.lattice_simulator = None
         self.num = None #number of turns to plot
         self.scale = None #figure size scaling
+        self.turns = None #specific turns to plot for certain types of plots
+        self.plot_lost = False #specify to plot lost particles
+        self.elliptic = False #specifies flag for plotting invariants for elliptic potential - defaults to false
         
     def set_new(self,name,val):
         '''A class method which wraps setattr()'''
