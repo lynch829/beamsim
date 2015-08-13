@@ -1,0 +1,78 @@
+!  IOTA V3 lattice - ONLY LINEAR ELEMENTS
+!  50 quadrupole option with 4 nonlinear magnet sections
+!  SEXTUPOLES ARE COMMENTED OUT AND REPLACED WITH DRIFTS!
+!  BetaX=0.726543 m,  AlphaX=0,  BetaY=0.726543 m,  AlphaY=0 
+OPTION, -ECHO;
+ASSIGN, ECHO="line.echo";
+
+nl: marker;
+o1: DRIFT, L=         1 ;
+oq: DRIFT, L=       0.1 ;
+o602: DRIFT, L=      0.15 ;
+b60: SBEND,  L=0.7330382858,  ANGLE=1.047197369;
+q601: QUADRUPOLE,  L=       0.2,  K1=-10.98582903;
+q602: QUADRUPOLE,  L=       0.2,  K1=19.33729721;
+q603: QUADRUPOLE,  L=       0.2,  K1=-11.43878792;
+q604: QUADRUPOLE,  L=       0.2,  K1=-11.01952702;
+q605: QUADRUPOLE,  L=       0.2,  K1=14.92139872;
+q606: QUADRUPOLE,  L=       0.1,  K1=-15.33096931;
+!S60: SEXTUPOLE, L=       0.1, K2=19.91841971;
+S60: DRIFT, L = 0.1;
+o302: DRIFT, L=       0.9 ;
+o312: DRIFT, L=       0.2 ;
+oA: DRIFT, L=0.225;
+!A: RFCAVITY, L=       0.05, VOLT=     0.075, LAG=0.5, HARMON=20;
+A: DRIFT, L=0.05;
+b30: SBEND,  L=0.3665191429,  ANGLE=0.5235986845;
+q301: QUADRUPOLE,  L=       0.2,  K1=-10.85069249;
+q302: QUADRUPOLE,  L=       0.2,  K1=20.90562007;
+q303: QUADRUPOLE,  L=       0.2,  K1=-13.75017751;
+q304: QUADRUPOLE,  L=       0.2,  K1=28.36907315;
+q305: QUADRUPOLE,  L=       0.2,  K1=-15.11372902;
+q306: QUADRUPOLE,  L=       0.2,  K1=12.25839105;
+q307: QUADRUPOLE,  L=       0.2,  K1=-9.048434139;
+q311: QUADRUPOLE,  L=       0.2,  K1=-10.8552818;
+q312: QUADRUPOLE,  L=       0.2,  K1=20.90356483;
+q313: QUADRUPOLE,  L=       0.2,  K1=-13.90244945;
+q314: QUADRUPOLE,  L=       0.2,  K1=28.32050711;
+q315: QUADRUPOLE,  L=       0.2,  K1=-15.13668038;
+q316: QUADRUPOLE,  L=       0.2,  K1=12.07624308;
+q317: QUADRUPOLE,  L=       0.2,  K1=-8.915906934;
+qChF: QUADRUPOLE,  L=       0.2,  K1=         0;
+qChD: QUADRUPOLE,  L=       0.1,  K1=         0;
+bChp: SBEND,  L=       0.2,  ANGLE=0.1991841971;
+bChm: SBEND,  L=       0.2,  ANGLE=-0.1991841971;
+oUND: DRIFT, L=       0.6 ;
+!S1: SEXTUPOLE, L=       0.1, K2=-139.4289622;
+S1: DRIFT, L = 0.1;
+od: DRIFT, L= 0.2046165 ;
+
+MACHINE: LINE=(
+o302, oq, q307, oq, q306, S1, o312, oA, A, oA, o312, oq, q305, oq, q304, oq, b30, oq, q303,  
+oq, q302, oq, q301, oq, nl, o1, o1, nl, oq, q601, oq, q602, oq, q603, oq, b60, oq,  
+q604, oq, q605, S60, o602, oq, q606, q606, oq, o602, S60, q605, oq, q604,  
+oq, b60, oq, q603, oq, q602, oq, q601, oq, nl, o1, o1, nl, oq, q311, oq, q312, oq,  
+q313, oq, b30, oq, q314, oq, q315, oq, od, oUND, S1, q316, oq, q317, oq,  
+bChp, oq, bChm, oq, qChF, oq, qChD, qChD, oq, qChF, oq, bChm, oq, bChp, oq,  
+q317, oq, q316, S1, oUND, od, oq, q315, oq, q314, oq, b30, oq, q313, oq,  
+q312, oq, q311, oq, nl, o1,
+o1, nl, oq, q601, oq, q602, oq, q603, oq, b60, oq, q604, oq,  
+q605, S60, o602, oq, q606, q606, oq, o602, S60, q605, oq, q604, oq, b60,  
+oq, q603, oq, q602, oq, q601, oq, nl, o1,
+o1, nl, oq, q301, oq, q302, oq, q303, oq,  
+b30, oq, q304, oq, q305, oq, o302, S1, q306, oq, q307, oq, o302  
+);
+
+beam, particle=proton,energy=1.0,npart=1.0E11;
+
+select, flag=twiss,clear;
+select, flag=twiss,column=name,s,betx,alfx,mux,dx,dpx,bety,alfy,muy,dy,dpy;
+
+use,period=machine;
+
+twiss, file="out.twiss";
+plot, table=twiss, haxis=s, vaxis1=betx,bety, vaxis2=dx,
+hmin=0,hmax=40,vmin=0,-1.5,vmax=10,1.5,
+colour=100, interpolate=true, file="out", title="IOTA Exp.3 4-magnets",noversion;
+
+stop;
