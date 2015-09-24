@@ -67,6 +67,23 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
         else:
             et = (opts.start+1)*interval-1
 
+    fig1 = plt.figure(figsize=(12,8))
+    
+    #fig1 = plt.gcf() #get current figure handle for saving purposes
+    plt.xlabel('s [m]', fontsize=14)
+    
+    yNames = ', '.join([n[1:] for n in names])
+    names2 = []
+    
+    for n in names:
+        if n.endswith('std'):
+            names2.append('$\sigma_{}$'.format(n[1]))
+    
+    #print [n for n in names2]
+    
+    yNames = ', '.join([n for n in names2])
+    plt.ylabel(yNames + ' [mm]', fontsize=14)
+    
     #handle multiple y arrays
     for index,(name,y) in enumerate(map(None,names,yVals)):
         
@@ -86,19 +103,20 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
             #yVals[index] = newy
             
         #print names       
-        
+        #print "{} : {}".format(index, names2[index])
         #add each plot with correct label
-        plt.plot(x[st:et],newy[st:et], '-', label=names[index][1:])
-    
+        #This adjusts the plotted x-values to begin at 0
+        plt.plot(x[st:et]-opts.lattice.get_length()*(opts.start),newy[st:et]*1000, '-', label=names2[index])
+        #plt.plot(x[st:et],newy[st:et], '-', label=names[index][1:])
     #print names
-        
-    fig1 = plt.gcf() #get current figure handle for saving purposes
-    plt.legend(loc='best')
-    plt.xlabel('s', fontsize=12)
+    ax = plt.gca()
     
-    yNames = ', '.join([n[1:] for n in names])
-    plt.ylabel(yNames, fontsize=12)
-    
+    if not opts.turns:
+        ax.set_xlim([0,opts.lattice.get_length()])
+    else:
+        ax.set_xlim([0,opts.turns*opts.lattice.get_length()])
+    #ymax = 100 #10 mm fixed ymax
+    #ax.set_ylim([0,ymax])    
     #limit x-axis according to 'length' specification
     if length:
         axes = plt.gca()
@@ -114,29 +132,30 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
     elif opts.turns:
         if betas:
             #names is a list so have to join with ''
-            name = opts.lattice_name+''.join(names)+'_turns'+str(opts.start)+'-'+str(opts.start+opts.turns)+'_betas.pdf'
-            title_name = 'Estimated RMS betas for lattice ' + opts.lattice_name+': Turns '+str(opts.start+1)+'-'+str(opts.start+opts.turns)
+            sv_name = opts.lattice_name+''.join(names)+'_turns'+str(opts.start)+'-'+str(opts.start+opts.turns)+'_betas.pdf'
+            title_name = 'Estimated RMS betas for lattice ' + opts.lattice_name+': Turns '+str(opts.start+1)+'-'+str(opts.start+1+opts.turns)
         
         else:
-            name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start)+'-'+str(opts.start+opts.turns)+'_betas.pdf'
-            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turns '+str(opts.start+1)+'-'+str(opts.start+opts.turns)
+            sv_name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start)+'-'+str(opts.start+opts.turns)+'.pdf'
+            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turns '+str(opts.start+1)+'-'+str(opts.start+1+opts.turns)
         
             
     #just plot 1 turn based on the starting position
     else:
         if betas:
             #names is a list so have to join with ''
-            name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start+1)+'_betas.pdf'
+            sv_name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start+1)+'_betas.pdf'
             title_name = 'Estimated RMS betas for lattice ' + opts.lattice_name+': Turn '+str(opts.start+1)
         
         else:
-            name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start+1)+'.pdf'
-            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turn'+str(opts.start+1)
+            sv_name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start+1)+'.pdf'
+            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turn '+str(opts.start+1)
     
-    plt.title(title_name, y=1.05, fontsize=15)    
+    plt.legend(loc='best', fontsize=16)
+    plt.title(title_name, y=1.02, fontsize=16)    
     plt.show()    
     if opts.save:
-        fig1.savefig(name)
+        fig1.savefig(sv_name, bbox_inches='tight')
 
 
 def makeBeta(vals, emit):
