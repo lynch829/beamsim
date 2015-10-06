@@ -20,6 +20,13 @@ coords['id'] = 6
 
 #opts.coords = coords
 
+fixed = {}
+fixed['alpha_e'] = 1
+fixed['beta_e'] = 1
+fixed['beta'] = 0.6539
+fixed['gamma'] = (1 + fixed['alpha_e']**2)/(fixed['beta_e'])
+fixed['t'] = 0.4
+fixed['c'] = 0.01
 
 ###################################### PLOTTERS ###################################
 
@@ -171,8 +178,14 @@ def plot_J(JArray,opts, ID=0):
     if opts.ID:
         ID = opts.ID
    
-    h = np.arange(opts.turns+1) #plus 1 to account for initial conditions
-    v = JArray[:opts.turns+1,ID]
+    if opts.turns+1 > JArray.shape[0]:
+        print 'Not enough data to plot for {} turns. Plotting {} turns instead'.format(opts.turns,JArray.shape[0]-1)
+        h = np.arange(JArray.shape[0])*opts.turnsPerDiag #plus 1 to account for initial conditions
+        v = JArray[::,ID]
+    else:
+        h = np.arange(opts.turns+1)*opts.turnsPerDiag #plus 1 to account for initial conditions
+        v = JArray[:opts.turns+1,ID]
+    
     vinit = v[0] #take the iniital values as the normalization value
     
     if opts.norm:
@@ -330,10 +343,10 @@ def plot_tracks(tracks, opts, ID=0):
 
     #if #turns specified, then slice on that as well
     if opts.turns:
-        hcoord = np.arange(opts.turns+1) #plus 1 to account for initial conditions
+        hcoord = np.arange(opts.turns+1)*opts.turnsPerDiag #plus 1 to account for initial conditions
         vcoords = tracks[:opts.turns+1,:,ID].transpose() 
     else:
-        hcoord = np.arange(tracks.shape[0]) 
+        hcoord = np.arange(tracks.shape[0])*opts.turnsPerDiag 
         vcoords = tracks[::,:,ID].transpose()
    
     fig = plt.figure()
@@ -619,9 +632,19 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
     #else:    
     #    sval = header['s_val']
     #sval = header['s_val'] + 4.9115191429
-    sval = header['s_val'] + 4.9115191429
-    #print sval
+    #sval = header['s_val'] + 4.9115191429
+    
+    sval = header['s_val']
+    
+    #Must be careful to use the appropriate s_val, or else normalizaztion will be off
     svals = twiss[::,0]
+    if sval > np.max(svals):
+        sval = 0    #simply fix the s value to be 0 if the particle is past the final slice s-value.
+    
+    if offset:
+        sval = sval+offset
+    
+    #print sval
     betaxvals = twiss[::,1]
     alphaxvals = twiss[::,2]
     gammaxvals = twiss[::,3]
@@ -646,8 +669,41 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
         alphay = twiss[ind,5]
         gammay = twiss[ind,6]
     
-    #print betax
-    #print betay
+    #fix these values for center of NL element
+    #betax = fixed['beta']
+    #betay = betax
+    #alphax = 0.0
+    #alpahy = 0.0
+    
+    #betax = 0.5848554532
+    #betay = betax
+    #alphax = 0.0
+    #alphay = 0.0
+    
+    
+    #USED TO USE THIS
+    #betax = fixed['beta']
+    #betax = 6.1246858201346921
+    #betay = betax
+    #alphax = -1*3.0776835371752562
+    #alphay = 1*alphax
+
+
+    
+    #alphax = -1*fixed['alpha_e']
+    #alphay = -1*fixed['alpha_e']
+    
+    #if sval == 0:
+    #    alphax = 1*fixed['alpha_e']
+    #    alphay = 1*fixed['alpha_e']        
+    
+    #betax = 1
+    #betay = 1
+    
+    #alphax = 0
+    
+    #print alphax
+    #print alphay
     
     x = particles[:,coords['x']] #units m
     newx = x / math.sqrt(betax) #normalized
@@ -704,7 +760,7 @@ def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, 
         if num:
             norms.append(norm_coords[:num])
         else:  
-            norms.append(norm_coords)
+            norms.append(norm_coords) #added flatten here
         #append 0s to maintain array size
         #if not header['n_part'] == norm_coords.shape[0]
     return np.asarray(norms)
@@ -720,7 +776,9 @@ def elliptic_coordinates(normalized, opts):
         - t, c - nonlinear magnet parameters (via opts)
     
     '''
-    beta = 0.6538
+    #beta = 0.6539
+    #beta =  fixed['beta']
+    beta = 6.1246858201346921
     
     t = opts.t 
     #c = opts.c 
@@ -756,7 +814,9 @@ def elliptic_hamiltonian(u,v, opts):
     Returns arrays of values for the first elliptic invariant (Hamiltonian) for a system with NL magnetic potential
     
     '''
-    beta = 0.6538
+    #beta = 0.6539
+    beta =  fixed['beta']
+    beta = 6.1246858201346921
     
     t = opts.t 
     #
@@ -787,7 +847,9 @@ def second_invariant(normalized, u,v, opts):
     
     '''
     
-    beta = 0.6538
+    #beta = 0.6539
+    beta =  fixed['beta']
+    beta = 6.1246858201346921
     
     t = -1*opts.t
     #c = opts.c
@@ -839,7 +901,7 @@ def get_single_particle_elliptic_invariants(filelist, twiss, opts, lost, num=1):
     
     '''
 
-    
+    #print num
     invariant = [] #invariant is a list of arrays of macroparticles
     
     for index,fileName in enumerate(filelist):
@@ -873,6 +935,30 @@ def get_single_particle_elliptic_invariants(filelist, twiss, opts, lost, num=1):
 
     return np.asarray(invariant)
 
+def get_toy_twiss(vals, lat):
+    
+    '''Returns a toy twiss array containing fixed values for constructed 's' values '''
+    
+    #reiterate
+    fixed['beta_e'] = vals[1]
+    fixed['alpha_e'] = vals[2]
+    fixed['beta'] = vals[1] #just make both of them that for now
+    fixed['gamma'] = (1 + fixed['alpha_e']**2)/(fixed['beta_e'])
+    
+    svals = np.linspace(0,lat.get_length(),100)
+    
+    length = len(svals)
+    twiss = np.zeros((length,7))    
+    
+    twiss[::,0] = svals
+    twiss[::,1] = [fixed['beta'] for i in range(length)]
+    twiss[::,2] = [fixed['alpha_e'] for i in range(length)]
+    twiss[::,3] = [fixed['gamma'] for i in range(length)] 
+    twiss[::,4] = [fixed['beta'] for i in range(length)]
+    twiss[::,5] = [fixed['alpha_e'] for i in range(length)]
+    twiss[::,6] = twiss[::,3]
+
+    return twiss
 
 def single_particle_invariant(header, particles, twiss, units=None, ID=None):
     
@@ -1012,6 +1098,8 @@ def get_hamiltonians(filelist):
     
     '''
     
+    DEPRECATED!
+    
     Returns a numpy array of single particle hamiltonian values obtained from .h5 files in filelist
     
     Arguments:
@@ -1065,7 +1153,7 @@ def get_tracks(filelist, opts):
 #######################################################################################################################################
 
 
-def plot_Poincare(opts):
+def plot_Poincare(opts, noTwiss=False):
     
     '''Plot a poincare section in the desired normalized coordinates'''
     
@@ -1075,7 +1163,36 @@ def plot_Poincare(opts):
     files = get_file_list(opts)
     lost = get_lost_particle_list(opts)
     #twiss = get_twiss(opts.lattice_simulator)
+    #if noTwiss:
+    #    twiss = noTwiss
+    #else:
     twiss = get_sliced_twiss(opts.lattice_simulator)
+    
+    if opts.plot_lost:
+         pArray = get_normalized_coords(files,twiss,lost,True)
+        
+    else:
+        pArray = get_normalized_coords(files,twiss,lost)
+    
+    plot_P(pArray, opts) 
+    
+def toy_plot_Poincare(opts, vals):
+    
+    '''Plot a poincare section in the desired normalized coordinates for the toy R-matrix simulations'''
+    
+    opts.hcoord = opts.plots[0]
+    opts.vcoord = opts.plots[1]
+    
+    files = get_file_list(opts)
+    lost = get_lost_particle_list(opts)
+
+    fixed['beta_e'] = vals[1]
+    fixed['alpha_e'] = vals[2]
+    fixed['beta'] = vals[1] #just make both of them that for now
+    fixed['gamma'] = (1 + fixed['alpha_e']**2)/(fixed['beta_e'])
+
+    twiss = get_toy_twiss(vals, opts.lattice)
+    
     
     if opts.plot_lost:
          pArray = get_normalized_coords(files,twiss,lost,True)
@@ -1100,7 +1217,7 @@ def plot_Invariant(opts):
     opts.hcoord = 'turn #'
     opts.vcoord = 'J(p,q)'
     opts.elliptic = False
-    
+
     files = get_file_list(opts)
     #twiss = get_twiss(opts.lattice_simulator)
     twiss = get_sliced_twiss(opts.lattice_simulator)
@@ -1120,8 +1237,10 @@ def plot_elliptic_Invariant(opts):
     '''
     
     opts.hcoord = 'turn #'
-    opts.t = 0.4
-    opts.c = 0.01
+    #opts.t = 0.4
+    #opts.c = 0.01
+    opts.t = fixed['t']
+    opts.c = fixed['c']
     opts.elliptic = True
     
     if opts.num:
@@ -1146,6 +1265,56 @@ def plot_elliptic_Invariant(opts):
     plot_J(jArray,opts)
     
     
+    
+    
+
+def toy_plot_elliptic_Invariant(opts, vals):
+    '''
+    
+    Plots the single particle hamiltonian for NL elliptic potential over a specified # of turns and # of particles
+    
+    Adapted for toy model with R-matrix
+    
+    Arguments:
+    opts - an Options object specifying # of turns, particle #s, etc.
+    
+    '''
+    
+    opts.hcoord = 'turn #'
+    #opts.t = 0.4
+    #opts.c = 0.01
+    opts.t = fixed['t']
+    opts.c = fixed['c']
+    opts.elliptic = True
+    
+    if opts.num:
+        num = opts.num
+    else:
+        num = 1
+        opts.num = 1
+        
+    if num == 1:
+        opts.vcoord = 'H(p,q)'
+    else:
+        opts.vcoord = 'I(p,q)'
+    
+    files = get_file_list(opts)
+    
+    fixed['beta_e'] = vals[1]
+    fixed['alpha_e'] = vals[2]
+    fixed['beta'] = vals[1] #just make both of them that for now
+    fixed['gamma'] = (1 + fixed['alpha_e']**2)/(fixed['beta_e'])
+
+    twiss = get_toy_twiss(vals, opts.lattice)
+    #t2 = twiss[:-1,:]
+    #twiss = get_twiss(opts.lattice_simulator)
+    lost = get_lost_particle_list(opts)
+    jArray = get_single_particle_elliptic_invariants(files, twiss, opts, lost, num)
+    #jArray = get_invariants(files, twiss, lost)
+    #return jArray
+    plot_J(jArray,opts)
+    
+
 def calc_elliptic_Invariant(opts):
     '''
     
@@ -1157,8 +1326,10 @@ def calc_elliptic_Invariant(opts):
     '''
     
     opts.hcoord = 'turn #'
-    opts.t = 0.4
-    opts.c = 0.01
+    #opts.t = 0.4
+    #opts.c = 0.01
+    opts.t = fixed['t']
+    opts.c = fixed['c']
     opts.elliptic = True
     
     if opts.num:
@@ -1184,7 +1355,53 @@ def calc_elliptic_Invariant(opts):
     return np.hstack((hArray,iArray))
     
     
-def stats_Invariant(hArray):
+
+def toy_calc_elliptic_Invariant(opts, vals):
+    '''
+    
+    Returns the single particle hamiltonian for NL elliptic potential over a specified # of turns and # of particles
+    
+    Arguments:
+    opts - an Options object specifying # of turns, particle #s, etc.
+    
+    '''
+    
+    opts.hcoord = 'turn #'
+    #opts.t = 0.4
+    #opts.c = 0.01
+    opts.t = fixed['t']
+    opts.c = fixed['c']
+    opts.elliptic = True
+    
+    if opts.num:
+        num = opts.num
+    else:
+        num = 1
+        opts.num = 1
+        
+    if num == 1:
+        opts.vcoord = 'H(p,q)'
+    else:
+        opts.vcoord = 'I(p,q)'
+        
+        
+    fixed['beta_e'] = vals[1]
+    fixed['alpha_e'] = vals[2]
+    fixed['beta'] = vals[1] #just make both of them that for now
+    fixed['gamma'] = (1 + fixed['alpha_e']**2)/(fixed['beta_e'])
+    
+    files = get_file_list(opts)
+    twiss = get_toy_twiss(vals, opts.lattice)
+    #t2 = twiss[:-1,:]
+    #twiss = get_twiss(opts.lattice_simulator)
+    lost = get_lost_particle_list(opts)
+    hArray = get_single_particle_elliptic_invariants(files, twiss, opts, lost, 1)
+    iArray = get_single_particle_elliptic_invariants(files, twiss, opts, lost, 2)
+    #jArray = get_invariants(files, twiss, lost)
+    #return jArray
+    return np.hstack((hArray,iArray))
+
+def toy_stats_Invariant(hArray, opts):
     '''
     
     Return statistics on single particle invariants
@@ -1193,8 +1410,8 @@ def stats_Invariant(hArray):
     hArray - horizontally stacked - 1st invariant is hArray[:,0], 2nd invariant is hArray[:,-1]
     
     '''
-    array1 = hArray[:,0]
-    array2 = hArray[:,1]
+    array1 = hArray[:,opts.ID]
+    array2 = hArray[:,opts.ID + opts.macro_particles]
     
     h_mean = np.mean(array1) * 1.e6
     h_std = np.std(array1) * 1.e6 
@@ -1202,7 +1419,28 @@ def stats_Invariant(hArray):
     i_std = np.std(array2) * 1.e6
     
     print "H -  Mean: " + str(h_mean) + " [mm-mrad] std (%): " + str(100*h_std/h_mean)
-    print "H -  Mean: " + str(i_mean) + " [mm-mrad] std (%): " + str(100*i_std/i_mean)
+    print "I -  Mean: " + str(i_mean) + " [mm-mrad] std (%): " + str(100*i_std/i_mean)
+
+
+def stats_Invariant(hArray, opts):
+    '''
+    
+    Return statistics on single particle invariants
+    
+    Arguments:
+    hArray - horizontally stacked - 1st invariant is hArray[:,0], 2nd invariant is hArray[:,-1]
+    
+    '''
+    array1 = hArray[:,opts.ID]
+    array2 = hArray[:,opts.ID + opts.macro_particles]
+    
+    h_mean = np.mean(array1) * 1.e6
+    h_std = np.std(array1) * 1.e6 
+    i_mean = np.mean(array2) * 1.e6
+    i_std = np.std(array2) * 1.e6
+    
+    print "H -  Mean: " + str(h_mean) + " [mm-mrad] std (%): " + str(100*h_std/h_mean)
+    print "I -  Mean: " + str(i_mean) + " [mm-mrad] std (%): " + str(100*i_std/i_mean)
        
 
 def plot_H_I(opts):
@@ -1213,8 +1451,10 @@ def plot_H_I(opts):
     '''
     
     opts.hcoord = 'turn #'
-    opts.t = 0.4
-    opts.c = 0.01
+    #opts.t = 0.4
+    #opts.c = 0.01
+    opts.t = fixed['t']
+    opts.c = fixed['c']
     opts.elliptic = True
     
         
