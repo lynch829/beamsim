@@ -289,7 +289,7 @@ def get_file_list(opts):
             if filename.find('particles') > -1 and filename.endswith('.h5'):
                 pfiles.append(filename)
     
-    return pfiles
+    return np.sort(pfiles)
     
     
 def get_lost_particle_list(opts):
@@ -315,10 +315,10 @@ def get_lost_particle_list(opts):
     
     if not len(lost_vals) == len(ci_full) - len(ci_shared):
         print "Warning: Length of lost list is not equal to number of lost particles!"
-        print "{} values are shared out of {} total values.".format(len(ci_shared),len(ci_full))
-        print "Therefore there are {} lost values.".format(len(ci_full)-len(ci_shared))
+        print "{} values are shared out of {} total values.".format(ci_shared,ci_full)
+        print "Therefore there are {} lost values.".formate(len(ci_full)-len(ci_shared))
         print "However I caclulate the length of the lost array to be {}.".format(len(lost_vals))
-        
+    
     #first check if size is equal
     #if not (header1['n_part'] == header2['n_part']):
         
