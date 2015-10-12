@@ -303,16 +303,29 @@ def get_lost_particle_list(opts):
     
     lost = []
     
+    indices1 = particles1[:,6]
+    indices2 = particles2[:,6]
+    
+    
+    combined_index = np.append(indices1,indices2)
+    s = np.sort(combined_index)
+    ci_shared = s[s[1:] == s[:-1]] #list of those that remain
+    ci_full = [int(ind) for ind in np.unique(combined_index)] #full list
+    lost_vals = np.delete(ci_unique, ci_shared) #lost values
+    
+    if not len(lost_vals) == len(ci_full) - len(ci_shared):
+        print "Warning: Length of lost list is not equal to number of lost particles!"
+    
     #first check if size is equal
-    if not (header1['n_part'] == header2['n_part']):
+    #if not (header1['n_part'] == header2['n_part']):
         
-        numLost = header1['n_part'] - header2['n_part']
+    #    numLost = header1['n_part'] - header2['n_part']
         
         
-        lost = [int(index) for index in particles1[:,6] if not index in particles2[:,6]]
+    #    lost = [int(index) for index in particles1[:,6] if not index in particles2[:,6]]
         
-        if not numLost == len(lost):
-            print "Warning: Length of lost list is not equal to number of lost particles!"
+    #    if not numLost == len(lost):
+    #        print "Warning: Length of lost list is not equal to number of lost particles!"
         
         #make a boolean comparison
         #boolVals = (particles1[0:header2['n_part'],6] == particles2[:,6])
@@ -339,7 +352,7 @@ def get_lost_particle_list(opts):
     #if type(lost) == int:
     #    return [lost]
     #else: 
-    return lost
+    return lost_vals
     
     
 def get_twiss(lattice_simulator):
@@ -594,6 +607,8 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
     alphayvals = twiss[::,5]
     gammayvals = twiss[::,6]
     
+    sval = twiss[-1][0] #force this for now
+    
     #interpolate if needed
     if not sval in svals:
         betax = np.interp(sval, svals, betaxvals)
@@ -610,19 +625,7 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
         betay = twiss[ind,4]
         alphay = twiss[ind,5]
         gammay = twiss[ind,6]
-    
-    #fix these values for center of NL element
-    #betax = fixed['beta']
-    #betay = betax
-    #alphax = 0.0
-    #alpahy = 0.0
-    
-    #betax = 0.5848554532
-    #betay = betax
-    #alphax = 0.0
-    #alphay = 0.0
-    
-    
+     
     #betax = fixed['beta']
     #betax = 6.1246858201346921
     #betay = betax
@@ -650,10 +653,10 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
     #super quick note that alpha is flipped at the end of the NL element
     if not sval == 0:
         alphax = alphax
-        alphay = alphax
+        alphay = alphay
     else:
-        alphax = -1*alphax
-        alphay = alphax
+        alphax = alphax
+        alphay = alphay
     
     x = particles[:,coords['x']] #units m
     newx = x / math.sqrt(betax) #normalized
@@ -1137,6 +1140,30 @@ def calc_bunch_H(bunch, opts, elliptic = True):
         iArray = np.zeros(len(particles))
         return hArray, iArray
 
+def full_calc_bunch_H(bunch, opts,header, elliptic = True):
+    '''Quick calculation of H for bunch particles - generic to any associated header'''
+    
+    #We'd like to use this for test bunches as well as synergia bunches
+    if type(bunch) == synergia.bunch.bunch.Bunch:
+        particles = bunch.get_local_particles()
+    elif type(bunch) == np.ndarray:
+        particles = bunch
+    
+    twiss = get_sliced_twiss(opts)
+    norm_coords = normalized_coordinates(header, particles, twiss)
+    
+    if elliptic:
+        u,v = elliptic_coordinates(norm_coords, opts)
+        hArray = single_particle_hamiltonian(norm_coords) + elliptic_hamiltonian(u,v,opts)  
+        iArray = second_invariant(norm_coords,u,v,opts)
+        return hArray, iArray
+        
+    else:
+        #calculate the regular Hamiltonian
+        hArray = single_particle_hamiltonian(norm_coords)
+        iArray = np.zeros(len(particles))
+        return hArray, iArray
+
 def calc_elliptic_Invariant(opts):
     '''
     
@@ -1370,28 +1397,6 @@ def stats_Invariant(hArray, opts):
     print "H -  Mean: " + str(h_mean) + " [mm-mrad] std (%): " + str(100*h_std/h_mean)
     print "I -  Mean: " + str(i_mean) + " [mm-mrad] std (%): " + str(100*i_std/i_mean)
        
-
-def plot_Poincare(opts):
-    
-    '''Plot a poincare section in the desired normalized coordinates for the toy R-matrix simulations'''
-    
-    opts.hcoord = opts.plots[0]
-    opts.vcoord = opts.plots[1]
-    
-    files = get_file_list(opts)
-    lost = get_lost_particle_list(opts)
-
-    twiss = get_toy_twiss(vals, opts)
-    
-    
-    if opts.plot_lost:
-         pArray = get_normalized_coords(files,twiss,lost,True)
-        
-    else:
-        pArray = get_normalized_coords(files,twiss,lost)
-    
-    plot_P(pArray, opts) 
-
 
 def plot_H_I(opts):
     '''
