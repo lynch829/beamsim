@@ -311,7 +311,7 @@ def get_lost_particle_list(opts):
     s = np.sort(combined_index)
     ci_shared = s[s[1:] == s[:-1]] #list of those that remain
     ci_full = [int(ind) for ind in np.unique(combined_index)] #full list
-    lost_vals = np.delete(ci_unique, ci_shared) #lost values
+    lost_vals = np.delete(ci_full, ci_shared) #lost values
     
     if not len(lost_vals) == len(ci_full) - len(ci_shared):
         print "Warning: Length of lost list is not equal to number of lost particles!"
