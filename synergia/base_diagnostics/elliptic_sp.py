@@ -189,7 +189,7 @@ def plot_J(JArray,opts, ID=0):
 
 ################################## GETTERS ####################################
 
-def get_particles(inputfile, lost=None):
+def get_particles(inputfile, lost=None, lostlist=None):
     
     '''Reads an input file and returns a numpy array of particles and a dictionary of root values. 
     If lost particles specified, then returns those separately.
@@ -233,13 +233,13 @@ def get_particles(inputfile, lost=None):
         #define new lists
         lost_particles = []
         kept_particles = []
-        lost_counter = list(lost)
+        lost_counter = lostlist
     
         #separate lost particles
         for index,particle in enumerate(particles):
             #val = particle[6]-adjustment
             val = particle[6]
-            if val in lost:
+            if val in lostlist:
                 lost_particles.append(particle)
                 #remove from counter
                 #lost_counter.remove(val)
@@ -432,7 +432,7 @@ def get_sliced_twiss(lattice_simulator):
     return np.asarray(twiss)
     
 
-def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, ID=None):
+def get_normalized_coords(filelist, twiss, lost=None,lostlist=None, plotlost=False, num=None, ID=None):
     
     '''
     
@@ -454,14 +454,14 @@ def get_normalized_coords(filelist, twiss, lost=None, plotlost=False, num=None, 
     
     norms = [] #norms is a list of arrays of particle coordinates
     if lost:
-        max_num = len(lost) #maximum # of particles in case of particle lost
+        max_num = len(lostlist) #maximum # of particles in case of particle lost
         #print max_num
     
     for index,fileName in enumerate(filelist):
         inputfile = fileName         
         
         if lost:
-            header, particles, lost_particles = get_particles(inputfile, lost)
+            header, particles, lost_particles = get_particles(inputfile, lost,lostlist)
         else:
             header, particles = get_particles(inputfile)
         
@@ -998,15 +998,20 @@ def toy_plot_Poincare(opts):
     
     files = get_file_list(opts)
     lost = get_lost_particle_list(opts)
+    
+    if len(lost) > 0:
+        #we have lost particles
+        opts.lost = lost #store these in opts.lost
+        lost = True #make lost a simple flag
 
     twiss = get_toy_twiss(opts)
     
     
     if opts.plot_lost:
-         pArray = get_normalized_coords(files,twiss,lost,True)
+         pArray = get_normalized_coords(files,twiss,lost,opts.lost,True)
         
     else:
-        pArray = get_normalized_coords(files,twiss,lost)
+        pArray = get_normalized_coords(files,twiss,lost,opts.lost)
     
     plot_P(pArray, opts) 
 
@@ -1226,14 +1231,19 @@ def toy_calc_elliptic_Invariant(opts, elliptic=True):
     #twiss = get_twiss(opts.lattice_simulator)
     lost = get_lost_particle_list(opts)
     
+    if len(lost) > 0:
+        #we have lost particles
+        opts.lost = lost #store these in opts.lost
+        lost = True #make lost a simple flag
+    
     hArray = []
     iArray = []
     
     for outfile in files:
         if lost:
-            header, particles, lost_particles = get_particles(outfile, lost)
+            header, particles, lost_particles = get_particles(outfile, lost,opts.lost)
         else:
-            header, particles = get_particles(outfile, lost)
+            header, particles = get_particles(outfile, lost, opts.lost)
         
         #print particles
         hVals, iVals = calc_bunch_H(particles, opts, elliptic)
