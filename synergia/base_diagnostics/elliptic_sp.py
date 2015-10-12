@@ -315,7 +315,10 @@ def get_lost_particle_list(opts):
     
     if not len(lost_vals) == len(ci_full) - len(ci_shared):
         print "Warning: Length of lost list is not equal to number of lost particles!"
-    
+        print "{} values are shared out of {} total values.".format(ci_shared,ci_full)
+        print "Therefore there are {} lost values.".formate(len(ci_full)-len(ci_shared))
+        print "However I caclulate the length of the lost array to be {}.".format(len(lost_vals))
+        
     #first check if size is equal
     #if not (header1['n_part'] == header2['n_part']):
         
