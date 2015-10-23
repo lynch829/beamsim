@@ -139,9 +139,10 @@ if opts.spacecharge:
         requested_stepper = "soelements"
         print >>logger, "requested stepper changed to soelements for space charge"
 
-    gridx = opts.gridx
-    gridy = opts.gridy
-    gridz = opts.gridz
+    #force these for test run
+    gridx = 64
+    gridy = 64
+    gridz = 1
     grid = [gridx, gridy, gridz]
 
     print >>logger, "grid: ", grid
@@ -178,7 +179,7 @@ else:
 #==================== set up the stepper ===============================
 
 
-turns = 200
+turns = 100
 order = 1
 nsteps_per_element = opts.steps_per_element
 n_ppc = 100 #n_ppc particles per transverse cell
@@ -345,7 +346,7 @@ if myrank == 0:
 
 #Calculate number of particles based on space charge considerations
 current = 14.e-3 #mA of current 
-bunch_length = 2.0*opts.stdz #effective bunch length
+bunch_length = 0.2 #effective bunch length
 
 rp_perlength = current/(beta*scipy.constants.c*scipy.constants.e)
 real_particles = rp_perlength*bunch_length
@@ -400,7 +401,7 @@ print >>logger, "saving turn-by-turn particle data every {} turns".format(opts.t
 #=========== put it all together in the propagator and go!
 
 #import time
-opts.turns = 200
+opts.turns = 100
     
 opts.checkpointperiod = 10
 opts.maxturns = opts.turns+1
