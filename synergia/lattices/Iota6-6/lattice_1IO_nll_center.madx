@@ -1,3 +1,5 @@
+!2IO NLL centered lattice updated for proton beam for space charge tests
+!Nathan Cook 10/23/2015
 !This lattice is the standard V6.6 lattice with 1 NL section - re-written to not use relative placement of nll elements. 
 !It agrees with the lattice in the repo ioptics/synergia/misc/iota_nl
 

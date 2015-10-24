@@ -1,5 +1,10 @@
-beam,particle=electron,bunched=true,radiate=false,mass:= 0.000510998928,charge:= -1,energy:= 0.150511006,pc:= 0.1505101386,gamma:= 294.542704,ex:= 1,exn:= 1178.164026,ey:= 1,eyn:= 1178.164026,et:= 1,sigt:= 0,sige:= 0,kbunch:= 1,npart:=
- 999999999.7,bcurrent:= 0.001201748703,freq0:= 7.500725761,circ:= 39.96822971,dtbyds:= 0,deltap:= 0,beta:= 0.9999942367,alfa:= 1.152665942e-05,u0:= 0,qs:= 0,arad:= 2.817940325e-15,bv:= 1,pdamp:={1 ,1 ,2 },n1min:= -1;
+!2IO NLL centered lattice updated for proton beam for space charge tests
+!Nathan Cook 10/23/2015
+
+beam,particle=proton,bunched=true,radiate=false,mass:= 0.938272046,charge:= 1,energy:=0.940772046,npart:=10000000000, gamma:=1.00266447, beta:=0.07285411, pc:=0.06853911
+
+!beam,particle=electron,bunched=true,radiate=false,mass:= 0.000510998928,charge:= -1,energy:= 0.150511006,pc:= 0.1505101386,gamma:= 294.542704,ex:= !1,exn:= 1178.164026,ey:= 1,eyn:= 1178.164026,et:= 1,sigt:= 0,sige:= 0,kbunch:= 1,npart:=
+! 999999999.7,bcurrent:= 0.001201748703,freq0:= 7.500725761,circ:= 39.96822971,dtbyds:= 0,deltap:= 0,beta:= 0.9999942367,alfa:= 1.152665942e-05,u0:= !0,qs:= 0,arad:= 2.817940325e-15,bv:= 1,pdamp:={1 ,1 ,2 },n1min:= -1;
 none = 0;
 kqa1r := kq14;
 kq14 = -9.000671334;
