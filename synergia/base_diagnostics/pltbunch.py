@@ -1,5 +1,6 @@
 import sys
 import synergia
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
@@ -39,26 +40,36 @@ def plot_bunch(bunch):
     yp = myParticles[:,bunch.yp]
     y = myParticles[:,bunch.y]
     
+    xmax = np.max(x)
+    xpmax = np.max(xp)
+    ymax = np.max(y)
+    ypmax = np.max(yp)
     #one way to use subplots
     #fig, (ax0, ax1, ax2)  = plt.subplots(ncols=3, figsize=(10,6))
 
     #another way - use gridspec
-    fig = plt.figure(figsize=(9.9,3.3))
+    fig = plt.figure(figsize=(15,5))
     gs = gridspec.GridSpec(1, 3, width_ratios=[1,1,1]) 
     
     ax0 = plt.subplot(gs[0])
-    ax0.scatter(x, y, c='b')
-    ax0.set_title('X-Y Coordinate Space')
+    ax0.scatter(x, y, c='k',s=16)
+    ax0.set_title('X-Y Coordinate Space',fontsize='16')
+    ax0.set_xlim([-1.5*xmax,1.5*xmax])
+    ax0.set_ylim([-1.5*ymax,1.5*ymax])
     #ax0.set_aspect(aspect=2.0)
     
     ax1 = plt.subplot(gs[1])
-    ax1.scatter(x, xp, c='r')
-    ax1.set_title('X Trace Space')
+    ax1.scatter(x, xp, c='b',s=16)
+    ax1.set_title('X Trace Space',fontsize='16')
+    ax0.set_xlim([-1.5*xmax,1.5*xmax])
+    ax0.set_ylim([-1.5*xpmax,1.5*xpmax])
     #ax1.set_aspect(aspect=2.0)
     
     ax2 = plt.subplot(gs[2])
-    ax2.scatter(y, yp, c='g')
-    ax2.set_title('Y Trace Space')
+    ax2.scatter(y, yp, c='r',s=16)
+    ax2.set_title('Y Trace Space',fontsize='16')
+    ax0.set_xlim([-1.5*ymax,1.5*ymax])
+    ax0.set_ylim([-1.5*ypmax,1.5*ypmax])
     #ax2.set_aspect(aspect=2.0)
     
     # Tweak spacing between subplots to prevent labels from overlapping

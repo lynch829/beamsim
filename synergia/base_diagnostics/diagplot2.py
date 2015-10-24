@@ -59,7 +59,9 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
         et = len(x)
     else:
         #just plot the specified interval  
-        interval = len(opts.lattice_simulator.get_slices()) # number of steps per turn
+        #interval = len(opts.lattice_simulator.get_slices()) # number of steps per turn
+        interval = opts.steps
+        interval = 896
         st = opts.start*interval
         
         if opts.turns:
@@ -106,7 +108,8 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
         #print "{} : {}".format(index, names2[index])
         #add each plot with correct label
         #This adjusts the plotted x-values to begin at 0
-        plt.plot(x[st:et]-opts.lattice.get_length()*(opts.start),newy[st:et]*1000, '-', label=names2[index])
+        #plt.plot(x[st:et]-opts.lattice.get_length()*(opts.start),newy[st:et]*1000, '-', label=names2[index])
+        plt.plot(x-opts.lattice.get_length()*(opts.start),newy*1000, '-', label=names2[index])
         #plt.plot(x[st:et],newy[st:et], '-', label=names[index][1:])
     #print names
     ax = plt.gca()
@@ -114,7 +117,7 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
     if not opts.turns:
         ax.set_xlim([0,opts.lattice.get_length()])
     else:
-        ax.set_xlim([0,opts.turns*opts.lattice.get_length()])
+       ax.set_xlim([0,opts.turns*opts.lattice.get_length()])
     #ymax = 100 #10 mm fixed ymax
     #ax.set_ylim([0,ymax])    
     #limit x-axis according to 'length' specification
@@ -137,7 +140,7 @@ def plot_turn(x,yVals,opts,names,betas,length=None):
         
         else:
             sv_name = opts.lattice_name+''.join(names)+'_turn'+str(opts.start)+'-'+str(opts.start+opts.turns)+'.pdf'
-            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turns '+str(opts.start+1)+'-'+str(opts.start+1+opts.turns)
+            title_name = yNames + ' for lattice ' + opts.lattice_name+': Turns '+str(opts.start)+'-'+str(opts.start+opts.turns)
         
             
     #just plot 1 turn based on the starting position
@@ -225,5 +228,10 @@ def diagPlot(opts, start=None, betas=False, length=None):
         
     #just call for the first x variable - all should be parameterized by 's' for now
     xmaster = plotVals['s']
+    
+    print "The length of the output is {} for x and {} for y.".format(len(xmaster), len(np.asarray(yVals)[0]))
+    print "The number of steps per turn is {}.".format(opts.steps)
+    print "By comparison, {} is the number of slices of the lattice simulator".format(len(opts.lattice_simulator.get_slices()))
+    print "Thus we have {} turns in the basic.h5 file.".format(len(xmaster)/opts.steps)
     
     plot_turn(xmaster,yVals,opts,nms, betas, length)

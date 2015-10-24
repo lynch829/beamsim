@@ -17,8 +17,7 @@ def make_opts(name, order, outputdir, steps, steps_per_element, **kwargs):
     opts.add("map_order", order, "Map order", int)
     
     #default output directory
-    outputdir = 'order_'+str(order)+'_'+name
-    opts.add("output_dir",outputdir,"Directory for output files", str)
+    opts.add("output_dir",str(outputdir),"Directory for output files", str)
     
     
     
@@ -31,6 +30,7 @@ def make_opts(name, order, outputdir, steps, steps_per_element, **kwargs):
     opts.add("turns", 1000, "Number of turns", int)
     opts.add("maxturns", 2000, "Maximum number of turns to run before checkpointing and quitting", int)
     opts.add("checkpointperiod", 3000, "Number of turns to run between checkpoints", int)
+    opts.add("turnsPerDiag", 1, "Number of turns between diagnostics outputs", int)
 
 
     opts.add("emitx", 2.5e-6, "real sigma Horizontal emittance [m rad]", float)
@@ -96,7 +96,7 @@ def cleanup(dirname):
     newdir = os.getcwd() + dirname
     
     for filename in os.listdir(curdir):
-        if filename.endswith('.h5'):
+        if filename.endswith('.h5') or filename=='log':
             try:
                 oldfn = '/'.join((curdir,filename))
                 newfn = '/'.join((curdir,dirname,filename))

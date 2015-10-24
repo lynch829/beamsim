@@ -74,8 +74,14 @@ def get_emittance(dim, bunch):
 
 
 def get_normalized_emittance(dim, bunch, beta, gamma):
+    '''Calculate the normalized emittance for a bunch with a given gamma and beta'''
     
     return get_emittance(dim, bunch)*(beta*gamma)
+    
+def get_geometric_emittance(norm_emit,beta,gamma):
+    '''Return the geometric emittance given a normalized emittance value and a beta/gamma.'''
+    
+    return norm_emit/(beta*gamma)
     
     
 def get_base_nll(nn, l0, mu0, t, c):

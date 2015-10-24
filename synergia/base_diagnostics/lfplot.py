@@ -28,21 +28,24 @@ def lf_plot(lf_info, opts):
     #get s coordinate and put in numpy array
     ss = np.array([lfd['s'] for lfd in lf_info])
     
+    fig1 = plt.figure(figsize=(12,8))
+    
     #grab lattice functions as needed
     for fn in opts.lf_fns:
         #create y array for each lattice function
         y = np.array([lfd[fn] for lfd in lf_info])
         #add to plot
+        ax.scatter()
         plt.plot(ss, y, label=fn)
     
     #add plot labels
-    plt.xlabel('s', fontsize=12)
-    plt.ylabel(', '.join(opts.lf_fns), fontsize=12)
+    plt.xlabel('s', fontsize=14)
+    plt.ylabel(', '.join(opts.lf_fns), fontsize=14)
     
     #add legend and show
     plt.legend(loc='best')
     title = 'Lattice functions for '+ opts.lattice_name
-    plt.title(title, y=1.05, fontsize=15)
+    plt.title(title, y=1.05, fontsize=18)
 
     fig1 = plt.gcf()
     plt.show()
