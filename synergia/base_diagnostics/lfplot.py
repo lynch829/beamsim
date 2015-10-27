@@ -28,24 +28,36 @@ def lf_plot(lf_info, opts):
     #get s coordinate and put in numpy array
     ss = np.array([lfd['s'] for lfd in lf_info])
     
+    #define figure
     fig1 = plt.figure(figsize=(12,8))
     
     #grab lattice functions as needed
+    fn_labels = [] #keep track of modified function labels
     for fn in opts.lf_fns:
         #create y array for each lattice function
         y = np.array([lfd[fn] for lfd in lf_info])
         #add to plot
-        ax.scatter()
-        plt.plot(ss, y, label=fn)
+        ax = fig1.gca()
+        if fn.startswith('beta') or fn.startswith('alpha'):
+            fn_label = '$\{}$'.format(fn)
+        else:
+            fn_label = '${}$'.format(fn)
+        fn_labels.append(fn_label)
+        ax.plot(ss, y, label=fn_label)
+        
     
     #add plot labels
-    plt.xlabel('s', fontsize=14)
-    plt.ylabel(', '.join(opts.lf_fns), fontsize=14)
+    plt.xlabel('s', fontsize=18)
+    plt.ylabel(', '.join(fn_labels), fontsize=18)
+    
+    #change tick label size
+    ax.tick_params(axis='x', labelsize=14)
+    ax.tick_params(axis='y', labelsize=14)
     
     #add legend and show
-    plt.legend(loc='best')
+    plt.legend(loc='best',fontsize=16)
     title = 'Lattice functions for '+ opts.lattice_name
-    plt.title(title, y=1.05, fontsize=18)
+    plt.title(title, y=1.02, fontsize=20)
 
     fig1 = plt.gcf()
     plt.show()
