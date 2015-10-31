@@ -2,7 +2,11 @@ import sys
 import synergia
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib import gridspec
+
+#RC stuff
+mpl.rc('axes', labelsize=12, titlesize=16)
 
 
 def check_grid_spec():
@@ -80,8 +84,56 @@ def plot_bunch(bunch):
     fig.tight_layout()
     plt.show()
     
+
+def plot_long(bunch):
+    '''
+    Plot the longitudinal coordinate and phase space of the bunch
+    '''
     
-from matplotlib import gridspec
+    #get particle properties from bunch
+    myParticles = bunch.get_local_particles()
+    x = myParticles[:,bunch.x]
+    y = myParticles[:,bunch.y]
+    z = myParticles[:,bunch.z]
+    zp = myParticles[:,bunch.zp]
+    
+    
+    #another way - use gridspec
+    fig = plt.figure(figsize=(15,5))
+    gs = gridspec.GridSpec(1, 3, width_ratios=[1,1,1]) 
+    
+    ax0 = plt.subplot(gs[0])
+    ax0.scatter(x, y, c='k',s=16)
+    ax0.set_title('X-Y Coordinate Space',fontsize='16')
+    ax0.set_xlim([-1.5*xmax,1.5*xmax])
+    ax0.set_ylim([-1.5*ymax,1.5*ymax])
+    #ax0.set_aspect(aspect=2.0)
+    
+    ax1 = plt.subplot(gs[1])
+    ax1.scatter(z, zp, c='b',s=16)
+    ax1.set_title('Z Trace Space',fontsize='16')
+    ax0.set_xlim([-1.5*zmax,1.5*zmax])
+    ax0.set_ylim([-1.5*zpmax,1.5*zpmax])
+    #ax1.set_aspect(aspect=2.0)
+    
+    ax2 = plt.subplot(gs[2])
+    ax2.scatter(z, y, c='r',s=16)
+    ax2.set_title('Z-Y Coordinate Space',fontsize='16')
+    ax0.set_xlim([-1.5*zmax,1.5*zmax])
+    ax0.set_ylim([-1.5*ymax,1.5*ymax])
+
+
+    #ax2.set_aspect(aspect=2.0)
+    
+    # Tweak spacing between subplots to prevent labels from overlapping
+    #plt.subplots_adjust(hspace=2)
+    
+    #set figure title
+    fig.canvas.set_window_title('Synergia Phase Space Distribution')
+    fig.tight_layout()
+    plt.show()
+
+
 
 def plt_bunch_dpop(bunch,opts,lost=None):
     '''A plotting script displaying different phase space plots - able to be split up by dpop'''
@@ -133,44 +185,3 @@ def plt_bunch_dpop(bunch,opts,lost=None):
             fig.savefig(sv_title, bbox_inches='tight') 
 
     
-def plot_long(bunch):
-    '''
-    Plot the longitudinal coordinate and phase space of the bunch
-    '''
-    
-    #get particle properties from bunch
-    myParticles = bunch.get_local_particles()
-    x = myParticles[:,bunch.x]
-    y = myParticles[:,bunch.y]
-    z = myParticles[:,bunch.z]
-    zp = myParticles[:,bunch.zp]
-    
-    #one way to use subplots
-    #fig, (ax0, ax1, ax2)  = plt.subplots(ncols=3, figsize=(10,6))
-    
-    #another way - use gridspec
-    fig = plt.figure(figsize=(9.9,3.3))
-    gs = gridspec.GridSpec(1, 3, width_ratios=[1,1,1]) 
-    
-    ax0 = plt.subplot(gs[0])
-    ax0.scatter(x, y, c='b')
-    ax0.set_title('X-Y Coordinate Space')
-    #ax0.set_aspect(aspect=2.0)
-    
-    ax1 = plt.subplot(gs[1])
-    ax1.scatter(z, zp, c='r')
-    ax1.set_title('Z Trace Space')
-    #ax1.set_aspect(aspect=2.0)
-    
-    ax2 = plt.subplot(gs[2])
-    ax2.scatter(z, y, c='g')
-    ax2.set_title('Z-Y coordinate space')
-    #ax2.set_aspect(aspect=2.0)
-    
-    # Tweak spacing between subplots to prevent labels from overlapping
-    #plt.subplots_adjust(hspace=2)
-    
-    #set figure title
-    fig.canvas.set_window_title('Synergia Phase Space Distribution')
-    fig.tight_layout()
-    plt.show()
