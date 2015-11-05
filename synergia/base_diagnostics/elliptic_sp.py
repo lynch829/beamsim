@@ -62,7 +62,7 @@ def plot_P(PArray, opts, num=10, ID=0):
     cropped = PArray[:turns,:num,(plots[opts.plots[0]],plots[opts.plots[1]])]
     
     reshaped = cropped.reshape(cropped.size/2,2).T
-    
+
     #separate horizontal and vertical components
     h = reshaped[0]
     v = reshaped[1]
@@ -189,6 +189,102 @@ def plot_J(JArray,opts, ID=0):
 
 ################################## GETTERS ####################################
 
+def get_one_particle(inputfile):
+    
+    '''Reads an input file and returns a single particle's coordinates specified by particle ID.
+    
+    '''
+    
+    f = tables.openFile(inputfile, 'r')
+    particles = f.root.particles.read()
+    
+    #As a test, arbitrarily remove some particles - working as intended
+    #particles = np.delete(particles,10,0)
+    #lost.append(10)
+    #particles = np.delete(particles,20,0)
+    #lost.append(21)
+    
+    #define lost particles array
+    #lost_particles = np.zeros((len(lost),7))
+    #lost_particles[:,6] = lost
+    
+    #get appropriate reference properties from file root
+    npart = particles.shape[0]
+    mass = f.root.mass[()]
+    p_ref = f.root.pz[()]
+    sn = f.root.s_n[()] #period length
+    tn = f.root.tlen[()] #cumulative tracked length for this file
+
+    f.close()
+    
+    ID = 137
+    
+    header = dict()
+    header['n_part'] = npart
+    header['mass'] = mass
+    header['p_ref'] = p_ref
+    header['s_val'] = sn
+    header['t_len'] = tn
+    
+    #need to potentially adjust the counter!
+    #adjustment = particles[npart-1, 6] - (npart-1)
+    
+    #separate lost particles
+    for particle in particles:
+        val = particle[6]
+        if val == ID:
+            return particle
+
+def get_some_particles(inputfile):
+    
+    '''Reads an input file and returns a single particle's coordinates specified by particle ID.
+    
+    '''
+    
+    f = tables.openFile(inputfile, 'r')
+    particles = f.root.particles.read()
+    
+    #As a test, arbitrarily remove some particles - working as intended
+    #particles = np.delete(particles,10,0)
+    #lost.append(10)
+    #particles = np.delete(particles,20,0)
+    #lost.append(21)
+    
+    #define lost particles array
+    #lost_particles = np.zeros((len(lost),7))
+    #lost_particles[:,6] = lost
+    
+    #get appropriate reference properties from file root
+    npart = particles.shape[0]
+    mass = f.root.mass[()]
+    p_ref = f.root.pz[()]
+    sn = f.root.s_n[()] #period length
+    tn = f.root.tlen[()] #cumulative tracked length for this file
+
+    f.close()
+    
+    ID = np.arange(5000)
+    
+    header = dict()
+    header['n_part'] = npart
+    header['mass'] = mass
+    header['p_ref'] = p_ref
+    header['s_val'] = sn
+    header['t_len'] = tn
+    
+    #need to potentially adjust the counter!
+    #adjustment = particles[npart-1, 6] - (npart-1)
+    
+    part_vals = []
+    
+    #separate lost particles
+    for particle in particles:
+        val = particle[6]
+        if val in ID:
+            part_vals.append(particle)
+            
+    return np.asarray(part_vals)
+
 def get_particles(inputfile, lost=None, lostlist=None):
     
     '''Reads an input file and returns a numpy array of particles and a dictionary of root values. 
@@ -301,23 +397,28 @@ def get_lost_particle_list(opts):
     
     header2, particles2 = get_particles(files[-1])
     
-    lost = []
+    if header1['n_part'] == header2['n_part']:
+        #we have no lost particles
+        lost_vals = []
     
-    indices1 = particles1[:,6]
-    indices2 = particles2[:,6]
+    else:
+        indices1 = particles1[:,6]
+        indices2 = particles2[:,6]
     
     
-    combined_index = np.append(indices1,indices2)
-    s = np.sort(combined_index)
-    ci_shared = s[s[1:] == s[:-1]] #list of those that remain
-    ci_full = [int(ind) for ind in np.unique(combined_index)] #full list
-    lost_vals = np.delete(ci_full, ci_shared) #lost values
+        combined_index = np.append(indices1,indices2)
+        s = np.sort(combined_index)
+        ci_shared = s[s[1:] == s[:-1]] #list of those that remain
+        ci_full = [int(ind) for ind in np.unique(combined_index)] #full list
+        lost_vals = np.delete(ci_full, ci_shared) #lost values
     
-    if not len(lost_vals) == len(ci_full) - len(ci_shared):
-        print "Warning: Length of lost list is not equal to number of lost particles!"
-        print "{} values are shared out of {} total values.".format(ci_shared,ci_full)
-        print "Therefore there are {} lost values.".formate(len(ci_full)-len(ci_shared))
-        print "However I caclulate the length of the lost array to be {}.".format(len(lost_vals))
+        #print lost_vals
+    
+        if not len(lost_vals) == len(ci_full) - len(ci_shared):
+            print "Warning: Length of lost list is not equal to number of lost particles!"
+            print "{} values are shared out of {} total values.".format(len(ci_shared),len(ci_full))
+            print "Therefore there are {} lost values.".format(len(ci_full)-len(ci_shared))
+            print "However I caclulate the length of the lost array to be {}.".format(len(lost_vals))
     
     #first check if size is equal
     #if not (header1['n_part'] == header2['n_part']):
@@ -655,11 +756,11 @@ def normalized_coordinates(header, particles, twiss, offset=None, units=None, ID
     #betay = betax
     #super quick note that alpha is flipped at the end of the NL element
     if not sval == 0:
-        alphax = alphax
-        alphay = alphay
+        alphax = -1*alphax
+        alphay = -1*alphay
     else:
-        alphax = alphax
-        alphay = alphay
+        alphax = -1*alphax
+        alphay = -1*alphay
     
     x = particles[:,coords['x']] #units m
     newx = x / math.sqrt(betax) #normalized
@@ -933,7 +1034,8 @@ def single_particle_hamiltonian(normalized, ID=None):
         quadratic = 0.5* (px[ID]**2 + py[ID]**2) + 0.5*(x[ID]**2 + y[ID]**2)
     else:
         quadratic = 0.5* (px**2 + py**2) + 0.5*(x**2 + y**2)
-
+        #quadratic = (px**2 + py**2) + (x**2 + y**2)
+        
     return quadratic
         
     
@@ -1148,6 +1250,44 @@ def calc_bunch_H(bunch, opts, elliptic = True):
         iArray = np.zeros(len(particles))
         return hArray, iArray
 
+def calc_H_and_ID(bunch, opts, elliptic = True):
+    '''Quick calculation of H for bunch particles which returns the corresponding particle ID'''
+    
+    #We'd like to use this for test bunches as well as synergia bunches
+    if type(bunch) == synergia.bunch.bunch.Bunch:
+        particles = bunch.get_local_particles()
+    elif type(bunch) == np.ndarray:
+        particles = bunch
+    
+    twiss = get_toy_twiss(opts)
+    header= {}
+    header['s_val'] = 0.
+    norm_coords = normalized_coordinates(header, particles, twiss)
+    
+    ID_vals = particles[:,6]
+    IDV = ID_vals.reshape(len(ID_vals),1) #force a reshape for stacking purposes
+    
+    
+    if elliptic:
+        u,v = elliptic_coordinates(norm_coords, opts)
+        hArray = single_particle_hamiltonian(norm_coords) + elliptic_hamiltonian(u,v,opts)  
+        iArray = second_invariant(norm_coords,u,v,opts)
+        
+        hID = np.transpose(np.vstack((ID_vals,hArray)))
+        iID = np.transpose(np.vstack((ID_vals,iArray)))
+        
+        return hID, iID
+        
+    else:
+        #calculate the regular Hamiltonian
+        hArray = single_particle_hamiltonian(norm_coords)
+        iArray = np.zeros(len(particles))
+        
+        hID = np.transpose(np.vstack((ID_vals,hArray)))
+        iID = np.transpose(np.vstack((ID_vals,iArray)))        
+
+        return hID, iID
+
 def full_calc_bunch_H(bunch, opts,header, elliptic = True):
     '''Quick calculation of H for bunch particles - generic to any associated header'''
     
@@ -1231,6 +1371,7 @@ def toy_calc_elliptic_Invariant(opts, elliptic=True):
     #twiss = get_twiss(opts.lattice_simulator)
     lost = get_lost_particle_list(opts)
     
+    
     if len(lost) > 0:
         #we have lost particles
         opts.lost = lost #store these in opts.lost
@@ -1243,7 +1384,7 @@ def toy_calc_elliptic_Invariant(opts, elliptic=True):
         if lost:
             header, particles, lost_particles = get_particles(outfile, lost,opts.lost)
         else:
-            header, particles = get_particles(outfile, lost, opts.lost)
+            header, particles = get_particles(outfile, lost)
         
         #print particles
         hVals, iVals = calc_bunch_H(particles, opts, elliptic)
