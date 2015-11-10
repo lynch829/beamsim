@@ -217,7 +217,7 @@ def get_one_particle(inputfile):
 
     f.close()
     
-    ID = 137
+    ID = 23456
     
     header = dict()
     header['n_part'] = npart
@@ -658,7 +658,10 @@ def get_toy_twiss(opts):
     length = len(svals)
     twiss = np.zeros((length,7))    
     
+    
+    #opts.betae = 1.*opts.betae
     gamma = (1 + opts.alphae**2)/(opts.betae)
+    
     
     twiss[::,0] = svals
     twiss[::,1] = [opts.betae for i in range(length)]
@@ -797,8 +800,8 @@ def elliptic_coordinates(normalized, opts):
     beta = opts.betae
     
     t = opts.t 
-    #c = opts.c 
-    c = opts.c / np.sqrt(beta)
+    c = opts.c 
+    #c = opts.c / np.sqrt(beta)
         
     x = normalized[:,0]
     #px = normalized[:,1]
@@ -806,8 +809,8 @@ def elliptic_coordinates(normalized, opts):
     #py = normalized[:,3]
     #first need to adjust x and y by the c factor
     
-    x = x/c
-    y = y/c
+    x = x*1.0/c
+    y = y*1.0/c
     
     #this needs to be adjusted so that I work on the entire array in one swoop
     
@@ -837,15 +840,15 @@ def elliptic_hamiltonian(u,v, opts):
     
     
     t = opts.t 
-    #
-    c = opts.c / np.sqrt(beta)
+    
+    c = opts.c
     #c = opts.c * np.sqrt(beta)
     
     f2u = u * np.sqrt(u**2 -1.) * np.arccosh(u)
     g2v = v * np.sqrt(1. - v**2) * (-np.pi/2 + np.arccos(v))
     
     elliptic = (f2u + g2v) / (u**2 - v**2)
-    kfac = -1*t*c*c
+    kfac = -1.*t*c*c
     
     return kfac*elliptic
     
@@ -870,10 +873,10 @@ def second_invariant(normalized, u,v, opts):
     #beta = 6.1246858201346921
     beta = opts.betae
     
-    t = -1*opts.t
-    #c = opts.c
+    t = -1.*opts.t
+    c = 1.*opts.c
     #c = opts.c * np.sqrt(beta)
-    c = opts.c / np.sqrt(beta)
+    #c = opts.c / np.sqrt(beta)
     
     x = normalized[:,0]
     px = normalized[:,1]
